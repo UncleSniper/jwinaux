@@ -7,7 +7,7 @@ import javax.swing.Icon;
 import java.awt.Container;
 import javax.swing.JLabel;
 import java.awt.Dimension;
-import javax.swing.JDialog;
+import javax.swing.JFrame;
 import javax.swing.JButton;
 import javax.swing.JTextArea;
 import javax.swing.UIManager;
@@ -20,7 +20,7 @@ import javax.swing.WindowConstants;
 import java.util.function.Consumer;
 import java.awt.event.WindowAdapter;
 
-public class ExceptionWindow extends JDialog {
+public class ExceptionWindow extends JFrame {
 
 	private static class OnCloseAdapter extends WindowAdapter {
 
@@ -42,7 +42,7 @@ public class ExceptionWindow extends JDialog {
 	private final Throwable exception;
 
 	public ExceptionWindow(Throwable exception, Consumer<ExceptionWindow> onClose) {
-		super((Window)null, "Error - JWinAux");
+		super("Error - JWinAux");
 		this.exception = exception;
 		Container content = getContentPane();
 		Icon icon = UIManager.getIcon("OptionPane.errorIcon");
@@ -79,10 +79,12 @@ public class ExceptionWindow extends JDialog {
 		});
 		content.add(clbut, c);
 		pack();
+		setLocationRelativeTo(null);
 		if(onClose == null)
 			setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
 		else
 			addWindowListener(new OnCloseAdapter(() -> onClose.accept(this)));
+		setVisible(true);
 	}
 
 	public Throwable getException() {
@@ -94,7 +96,7 @@ public class ExceptionWindow extends JDialog {
 			SwingUtilities.invokeLater(() -> ExceptionWindow.showException(exception, onClose));
 			return;
 		}
-		new ExceptionWindow(exception, onClose).setVisible(true);
+		new ExceptionWindow(exception, onClose);
 	}
 
 	private static String throwableToString(Throwable t) {

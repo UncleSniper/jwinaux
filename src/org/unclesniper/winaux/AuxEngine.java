@@ -12,7 +12,7 @@ import org.unclesniper.winwin.WinEventProc;
 import org.unclesniper.winwin.HWinEventHook;
 import java.util.concurrent.LinkedBlockingQueue;
 
-public final class Engine {
+public final class AuxEngine {
 
 	private final class AuxWinEventProc implements WinEventProc {
 
@@ -113,8 +113,7 @@ public final class Engine {
 					catch(InterruptedException ie) {
 						continue;
 					}
-					if(task != null)
-						task.run();
+					task.run();
 				}
 				catch(RuntimeException e) {
 					feedError(e);
@@ -137,9 +136,9 @@ public final class Engine {
 
 	private long thangThreadId;
 
-	public Engine() {}
+	public AuxEngine() {}
 
-	public boolean doYaThang(Configuration config) {
+	public boolean doYaThang(Configuration config, Runnable onError) {
 		synchronized(thangLock) {
 			boolean hooking = false;
 			Worker workerThread = null;
@@ -164,16 +163,16 @@ public final class Engine {
 				workerThread = new Worker();
 				Msg.pumpAll();
 				workerThread.pleaseStop();
-				taskQueue.add(null);
+				taskQueue.add(() -> {});
 				weHookLo.unhookWinEvent();
 				weHookHi.unhookWinEvent();
 			}
 			catch(RuntimeException e) {
-				ExceptionWindow.showException(e, null);
+				ExceptionWindow.showException(e, onError == null ? null : exwin -> onError.run());
 				return false;
 			}
 			catch(Error e) {
-				ExceptionWindow.showException(e, null);
+				ExceptionWindow.showException(e, onError == null ? null : exwin -> onError.run());
 				return false;
 			}
 			finally {
@@ -182,7 +181,7 @@ public final class Engine {
 					WinHook.stopHooks();
 				if(workerThread != null) {
 					workerThread.pleaseStop();
-					taskQueue.add(null);
+					taskQueue.add(() -> {});
 					for(;;) {
 						try {
 							workerThread.join();
@@ -301,6 +300,14 @@ public final class Engine {
 
 	public void postQuitMessage() {
 		Msg.postQuitMessageToThread(thangThreadId, 0);
+	}
+
+	public void addShellEventListener(ShellEventListener listener) {
+		shellEventListeners.add(listener);
+	}
+
+	public boolean removeShellEventListener(ShellEventListener listener) {
+		return shellEventListeners.remove(listener);
 	}
 
 }

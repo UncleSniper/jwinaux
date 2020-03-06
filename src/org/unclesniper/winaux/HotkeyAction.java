@@ -2,8 +2,8 @@ package org.unclesniper.winaux;
 
 public interface HotkeyAction {
 
-	void hotkeyDown(Engine engine);
+	void hotkeyDown(AuxEngine engine);
 
-	void hotkeyUp(Engine engine);
+	void hotkeyUp(AuxEngine engine);
 
 }

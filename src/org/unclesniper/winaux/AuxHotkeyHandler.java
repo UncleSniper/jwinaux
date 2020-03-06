@@ -5,18 +5,18 @@ import org.unclesniper.winwin.HotkeyHandler;
 
 public class AuxHotkeyHandler implements HotkeyHandler {
 
-	private final Engine engine;
+	private final AuxEngine engine;
 
 	private HotkeyAction action;
 
-	public AuxHotkeyHandler(Engine engine, HotkeyAction action) {
+	public AuxHotkeyHandler(AuxEngine engine, HotkeyAction action) {
 		if(engine == null)
 			throw new IllegalStateException("Engine cannot be null");
 		this.engine = engine;
 		this.action = action;
 	}
 
-	public Engine getEngine() {
+	public AuxEngine getEngine() {
 		return engine;
 	}
 

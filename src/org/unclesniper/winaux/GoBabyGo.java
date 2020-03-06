@@ -15,6 +15,7 @@ public class GoBabyGo {
 		File wirefile = new File(confdir, "wire.ogdl");
 		ClassRegistry creg = new ClassRegistry();
 		Injection inj = new Injection(creg);
+		inj.registerBuiltinStringClassMappers();
 		Configuration conf;
 		try {
 			ObjectGraphDescriptor odesc = inj.readDescription(wirefile);
@@ -28,9 +29,8 @@ public class GoBabyGo {
 			ExceptionWindow.showException(e, win -> System.exit(1));
 			return;
 		}
-		Engine engine = new Engine();
-		if(!engine.doYaThang(conf))
-			System.exit(1);
+		AuxEngine engine = new AuxEngine();
+		engine.doYaThang(conf, () -> System.exit(1));
 	}
 
 }

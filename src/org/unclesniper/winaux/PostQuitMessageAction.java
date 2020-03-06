@@ -19,7 +19,7 @@ public class PostQuitMessageAction implements AuxAction {
 	}
 
 	@Override
-	public void perform(Engine engine) {
+	public void perform(AuxEngine engine) {
 		engine.postQuitMessage();
 	}
 

@@ -8,6 +8,8 @@ public class Configuration {
 
 	private final List<AuxHotkey> hotkeys = new LinkedList<AuxHotkey>();
 
+	private final List<ShellEventListener> shellEventListeners = new LinkedList<ShellEventListener>();
+
 	public Configuration() {}
 
 	public List<AuxHotkey> getHotkeys() {
@@ -21,6 +23,19 @@ public class Configuration {
 
 	public boolean removeHotkey(AuxHotkey hotkey) {
 		return hotkey != null && hotkeys.remove(hotkey);
+	}
+
+	public List<ShellEventListener> getShellEventListeners() {
+		return Collections.unmodifiableList(shellEventListeners);
+	}
+
+	public void addShellEventListener(ShellEventListener listener) {
+		if(listener != null)
+			shellEventListeners.add(listener);
+	}
+
+	public boolean removeShellEventListener(ShellEventListener listener) {
+		return listener != null && shellEventListeners.remove(listener);
 	}
 
 }

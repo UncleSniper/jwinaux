@@ -30,13 +30,13 @@ public class AuxActionHotkeyAction implements HotkeyAction {
 	}
 
 	@Override
-	public void hotkeyDown(Engine engine) {
+	public void hotkeyDown(AuxEngine engine) {
 		if(onDown != null)
 			onDown.perform(engine);
 	}
 
 	@Override
-	public void hotkeyUp(Engine engine) {
+	public void hotkeyUp(AuxEngine engine) {
 		if(onUp != null)
 			onUp.perform(engine);
 	}
