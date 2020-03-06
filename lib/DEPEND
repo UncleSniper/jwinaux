@@ -1,0 +1,3 @@
+Place the following JARs into this directory:
+- org.unclesniper.ogdl.jar (https://github.com/UncleSniper/jogdl)
+- org.unclesniper.winwin.jar (https://github.com/UncleSniper/jwinwin)

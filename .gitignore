@@ -1,0 +1,7 @@
+.*.sw[po]
+/lib/*.jar
+/bin
+/warbin
+/dist
+/doc/api
+/build.properties
