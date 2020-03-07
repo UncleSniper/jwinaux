@@ -2,8 +2,10 @@ package org.unclesniper.winaux;
 
 import java.util.Map;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import org.unclesniper.winwin.Msg;
 import org.unclesniper.winwin.HWnd;
+import java.util.function.Consumer;
 import org.unclesniper.winwin.Hotkey;
 import org.unclesniper.winwin.WinAPI;
 import org.unclesniper.winwin.WinHook;
@@ -136,6 +138,8 @@ public final class AuxEngine {
 
 	private long thangThreadId;
 
+	private final Listeners<TagListener> tagListeners = new Listeners<TagListener>();
+
 	public AuxEngine() {}
 
 	public boolean doYaThang(Configuration config, Runnable onError) {
@@ -146,6 +150,19 @@ public final class AuxEngine {
 			try {
 				thangThreadId = WinAPI.getCurrentThreadId();
 				int hkid = 0;
+				Map<Class<?>, Map<TagProvider, Void>> listenerTypes = new HashMap<Class<?>, Map<TagProvider, Void>>();
+				for(TagProvider provider : config.getTagProviders()) {
+					Consumer<Class<?>> listenerTypeSink = AuxEngine.makeListenerTypeSink(listenerTypes, provider);
+					provider.getPredicate().collectListenerTypes(listenerTypeSink);
+				}
+				Map<Class<?>, TagUpdater> tagUpdaters = config.getTagUpdaters();
+				for(Map.Entry<Class<?>, Map<TagProvider, Void>> entry : listenerTypes.entrySet()) {
+					Class<?> ltype = entry.getKey();
+					TagUpdater updater = tagUpdaters.get(ltype);
+					if(updater == null)
+						throw new NoSuchTagUpdaterException(ltype);
+					updater.registerListener(entry.getValue().keySet(), this);
+				}
 				for(AuxHotkey hk : config.getHotkeys()) {
 					if(hk.isLowLevel())
 						WinHook.registerLowLevelHotKey(null, hkid++, hk.getModifiers(), hk.getKey(),
@@ -197,6 +214,18 @@ public final class AuxEngine {
 		return true;
 	}
 
+	private static Consumer<Class<?>> makeListenerTypeSink(Map<Class<?>, Map<TagProvider, Void>> listenerTypes,
+			TagProvider provider) {
+		return ltype -> {
+			Map<TagProvider, Void> set = listenerTypes.get(ltype);
+			if(set == null) {
+				set = new IdentityHashMap<TagProvider, Void>();
+				listenerTypes.put(ltype, set);
+			}
+			set.put(provider, null);
+		};
+	}
+
 	public void feedError(Throwable exception) {
 		ExceptionWindow.showException(exception, null);
 	}
@@ -222,18 +251,18 @@ public final class AuxEngine {
 	}
 
 	private void fireWindowCloaked(KnownWindow win) {
-		ShellEvent event = new ShellEvent(win);
+		ShellEvent event = new ShellEvent(this, win);
 		shellEventListeners.fire(listener -> listener.windowCloaked(event));
 	}
 
 	private void fireWindowCreate(KnownWindow win) {
-		ShellEvent event = new ShellEvent(win);
+		ShellEvent event = new ShellEvent(this, win);
 		shellEventListeners.fire(listener -> listener.windowCreate(event));
 	}
 
 	private void fireWindowDestroy(HWnd win) {
 		try {
-			ShellEvent event = new ShellEvent(null);
+			ShellEvent event = new ShellEvent(this, null);
 			shellEventListeners.fire(listener -> listener.windowDestroy(event, win));
 		}
 		finally {
@@ -244,57 +273,57 @@ public final class AuxEngine {
 	}
 
 	private void fireWindowFocus(KnownWindow win) {
-		ShellEvent event = new ShellEvent(win);
+		ShellEvent event = new ShellEvent(this, win);
 		shellEventListeners.fire(listener -> listener.windowFocus(event));
 	}
 
 	private void fireWindowNameChange(KnownWindow win) {
-		ShellEvent event = new ShellEvent(win);
+		ShellEvent event = new ShellEvent(this, win);
 		shellEventListeners.fire(listener -> listener.windowNameChange(event));
 	}
 
 	private void fireWindowReorder(KnownWindow win) {
-		ShellEvent event = new ShellEvent(win);
+		ShellEvent event = new ShellEvent(this, win);
 		shellEventListeners.fire(listener -> listener.windowReorder(event));
 	}
 
 	private void fireWindowShow(KnownWindow win) {
-		ShellEvent event = new ShellEvent(win);
+		ShellEvent event = new ShellEvent(this, win);
 		shellEventListeners.fire(listener -> listener.windowShow(event));
 	}
 
 	private void fireWindowUncloaked(KnownWindow win) {
-		ShellEvent event = new ShellEvent(win);
+		ShellEvent event = new ShellEvent(this, win);
 		shellEventListeners.fire(listener -> listener.windowUncloaked(event));
 	}
 
 	private void fireDesktopSwitch() {
-		ShellEvent event = new ShellEvent(null);
+		ShellEvent event = new ShellEvent(this, null);
 		shellEventListeners.fire(listener -> listener.desktopSwitch(event));
 	}
 
 	private void fireForeground(KnownWindow win) {
-		ShellEvent event = new ShellEvent(win);
+		ShellEvent event = new ShellEvent(this, win);
 		shellEventListeners.fire(listener -> listener.foreground(event));
 	}
 
 	private void fireWindowMinimizeEnd(KnownWindow win) {
-		ShellEvent event = new ShellEvent(win);
+		ShellEvent event = new ShellEvent(this, win);
 		shellEventListeners.fire(listener -> listener.windowMinimizeEnd(event));
 	}
 
 	private void fireWindowMinimizeStart(KnownWindow win) {
-		ShellEvent event = new ShellEvent(win);
+		ShellEvent event = new ShellEvent(this, win);
 		shellEventListeners.fire(listener -> listener.windowMinimizeStart(event));
 	}
 
 	private void fireWindowMoveSizeEnd(KnownWindow win) {
-		ShellEvent event = new ShellEvent(win);
+		ShellEvent event = new ShellEvent(this, win);
 		shellEventListeners.fire(listener -> listener.windowMoveSizeEnd(event));
 	}
 
 	private void fireWindowMoveSizeStart(KnownWindow win) {
-		ShellEvent event = new ShellEvent(win);
+		ShellEvent event = new ShellEvent(this, win);
 		shellEventListeners.fire(listener -> listener.windowMoveSizeStart(event));
 	}
 
@@ -308,6 +337,24 @@ public final class AuxEngine {
 
 	public boolean removeShellEventListener(ShellEventListener listener) {
 		return shellEventListeners.remove(listener);
+	}
+
+	private void fireTagGained(KnownWindow window, Tag tag) {
+		TagEvent event = new TagEvent(this, window, tag);
+		tagListeners.fire(listener -> listener.tagGained(event));
+	}
+
+	private void fireTagLost(KnownWindow window, Tag tag) {
+		TagEvent event = new TagEvent(this, window, tag);
+		tagListeners.fire(listener -> listener.tagLost(event));
+	}
+
+	public void addTagListener(TagListener listener) {
+		tagListeners.add(listener);
+	}
+
+	public boolean removeTagListener(TagListener listener) {
+		return tagListeners.remove(listener);
 	}
 
 }
