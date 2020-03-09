@@ -2,6 +2,6 @@ package org.unclesniper.winaux;
 
 public interface TagUpdater {
 
-	void registerListener(Iterable<TagProvider> provider, AuxEngine engine);
+	void registerListener(Iterable<TagProvider> providers, AuxEngine engine);
 
 }

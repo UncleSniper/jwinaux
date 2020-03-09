@@ -177,6 +177,7 @@ public final class AuxEngine {
 						HWinEventHook.EVENT_OBJECT_UNCLOAKED, HWinEventHook.WINEVENT_SKIPOWNPROCESS, winEventProc);
 				WinHook.startHooks(WinHook.WH_KEYBOARD_LL);
 				hooking = true;
+				slate(this::internInitialWindows);
 				workerThread = new Worker();
 				Msg.pumpAll();
 				workerThread.pleaseStop();
@@ -226,6 +227,13 @@ public final class AuxEngine {
 		};
 	}
 
+	private void internInitialWindows() {
+		HWnd.enumWindows(hwnd -> {
+			internWindow(hwnd);
+			return true;
+		});
+	}
+
 	public void feedError(Throwable exception) {
 		ExceptionWindow.showException(exception, null);
 	}
@@ -266,9 +274,12 @@ public final class AuxEngine {
 			shellEventListeners.fire(listener -> listener.windowDestroy(event, win));
 		}
 		finally {
+			KnownWindow known;
 			synchronized(knownWindows) {
-				knownWindows.remove(win);
+				known = knownWindows.remove(win);
 			}
+			if(known != null)
+				known.removeAllTagsNoGlobalNotify();
 		}
 	}
 
@@ -355,6 +366,30 @@ public final class AuxEngine {
 
 	public boolean removeTagListener(TagListener listener) {
 		return tagListeners.remove(listener);
+	}
+
+	public TagGrant grantTag(KnownWindow window, Tag tag) {
+		if(window == null)
+			throw new IllegalArgumentException("Window cannot be null");
+		if(tag == null)
+			throw new IllegalArgumentException("Tag cannot be null");
+		TagGrant grant = new TagGrant(this, tag, window);
+		boolean gained = window.addTagNoGlobalNotify(grant);
+		tag.addWindowNoGlobalNotify(grant);
+		if(gained)
+			fireTagGained(window, tag);
+		return grant;
+	}
+
+	void revokeTagGrant(TagGrant grant) {
+		if(grant == null)
+			throw new IllegalArgumentException("Tag grant cannot be null");
+		KnownWindow window = grant.getWindow();
+		boolean lost = window.removeTagNoGlobalNotify(grant);
+		Tag tag = grant.getTag();
+		tag.removeWindowNoGlobalNotify(grant);
+		if(lost)
+			fireTagLost(window, tag);
 	}
 
 }

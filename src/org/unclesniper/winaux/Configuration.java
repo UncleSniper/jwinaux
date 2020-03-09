@@ -48,7 +48,7 @@ public class Configuration {
 		return Collections.unmodifiableMap(tagUpdaters);
 	}
 
-	public TagUpdater addTagUpdater(Class<?> clazz, TagUpdater updater) {
+	public TagUpdater setTagUpdater(Class<?> clazz, TagUpdater updater) {
 		if(clazz == null || updater == null)
 			return null;
 		return tagUpdaters.put(clazz, updater);

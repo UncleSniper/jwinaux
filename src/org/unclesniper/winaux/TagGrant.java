@@ -8,6 +8,8 @@ public final class TagGrant {
 
 	private final KnownWindow window;
 
+	private volatile boolean revoked;
+
 	TagGrant(AuxEngine engine, Tag tag, KnownWindow window) {
 		this.engine = engine;
 		if(tag == null)
@@ -28,6 +30,20 @@ public final class TagGrant {
 
 	public KnownWindow getWindow() {
 		return window;
+	}
+
+	public boolean isRevoked() {
+		return revoked;
+	}
+
+	public boolean revoke() {
+		synchronized(this) {
+			if(revoked)
+				return false;
+			engine.revokeTagGrant(this);
+			revoked = true;
+		}
+		return true;
 	}
 
 }

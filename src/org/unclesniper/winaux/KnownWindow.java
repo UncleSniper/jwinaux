@@ -65,4 +65,33 @@ public final class KnownWindow {
 		return changed;
 	}
 
+	void removeAllTagsNoGlobalNotify() {
+		synchronized(tags) {
+			try {
+				for(Tag tag : tags.keySet())
+					tag.removeCompleteWindowNoGlobalNotify(this);
+			}
+			finally {
+				tags.clear();
+			}
+		}
+	}
+
+	public Set<Tag> getTags() {
+		Map<Tag, Void> set = new IdentityHashMap<Tag, Void>();
+		synchronized(tags) {
+			for(Tag tag : tags.keySet())
+				set.put(tag, null);
+		}
+		return set.keySet();
+	}
+
+	public boolean hasTag(Tag tag) {
+		if(tag == null)
+			return false;
+		synchronized(tags) {
+			return tags.containsKey(tag);
+		}
+	}
+
 }

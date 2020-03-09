@@ -1,10 +1,15 @@
 package org.unclesniper.winaux;
 
+import java.util.Map;
+import java.util.WeakHashMap;
+
 public class TagProvider {
 
 	private Tag tag;
 
 	private WindowPredicate predicate;
+
+	private final Map<KnownWindow, TagGrant> grants = new WeakHashMap<KnownWindow, TagGrant>();
 
 	public TagProvider() {}
 
@@ -29,8 +34,32 @@ public class TagProvider {
 		this.predicate = predicate;
 	}
 
-	public void apply(KnownWindow window) {
-		//TODO
+	public void apply(AuxEngine engine, KnownWindow window) {
+		if(engine == null)
+			throw new IllegalArgumentException("Engine cannot be null");
+		if(window == null)
+			throw new IllegalArgumentException("Window cannot be null");
+		if(predicate.matches(engine, window))
+			grant(engine, window);
+		else
+			revoke(window);
+	}
+
+	private void grant(AuxEngine engine, KnownWindow window) {
+		synchronized(grants) {
+			if(!grants.containsKey(window))
+				grants.put(window, engine.grantTag(window, tag));
+		}
+	}
+
+	private void revoke(KnownWindow window) {
+		synchronized(grants) {
+			TagGrant grant = grants.get(window);
+			if(grant != null) {
+				grant.revoke();
+				grants.remove(window);
+			}
+		}
 	}
 
 }

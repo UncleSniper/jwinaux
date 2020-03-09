@@ -56,4 +56,26 @@ public final class Tag {
 		return changed;
 	}
 
+	boolean removeCompleteWindowNoGlobalNotify(KnownWindow window) {
+		if(window == null)
+			throw new IllegalArgumentException("Window cannot be null");
+		return windows.remove(window) != null;
+	}
+
+	public Set<KnownWindow> getTaggedWindows() {
+		Set<KnownWindow> set = new HashSet<KnownWindow>();
+		synchronized(windows) {
+			set.addAll(windows.keySet());
+		}
+		return set;
+	}
+
+	public boolean isTaggedWindow(KnownWindow window) {
+		if(window == null)
+			return false;
+		synchronized(windows) {
+			return windows.containsKey(window);
+		}
+	}
+
 }
