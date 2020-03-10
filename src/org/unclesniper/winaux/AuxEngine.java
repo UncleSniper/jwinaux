@@ -1,7 +1,9 @@
 package org.unclesniper.winaux;
 
 import java.util.Map;
+import java.util.List;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.IdentityHashMap;
 import org.unclesniper.winwin.Msg;
 import org.unclesniper.winwin.HWnd;
@@ -163,6 +165,10 @@ public final class AuxEngine {
 						throw new NoSuchTagUpdaterException(ltype);
 					updater.registerListener(entry.getValue().keySet(), this);
 				}
+				for(ShellEventListener listener : config.getShellEventListeners())
+					addShellEventListener(listener);
+				for(TagListener listener : config.getTagListeners())
+					addTagListener(listener);
 				for(AuxHotkey hk : config.getHotkeys()) {
 					if(hk.isLowLevel())
 						WinHook.registerLowLevelHotKey(null, hkid++, hk.getModifiers(), hk.getKey(),
@@ -278,8 +284,12 @@ public final class AuxEngine {
 			synchronized(knownWindows) {
 				known = knownWindows.remove(win);
 			}
-			if(known != null)
-				known.removeAllTagsNoGlobalNotify();
+			if(known != null) {
+				List<Tag> lost = new LinkedList<Tag>();
+				known.removeAllTagsNoGlobalNotify(lost::add);
+				for(Tag ltag : lost)
+					fireTagLost(known, ltag, true);
+			}
 		}
 	}
 
@@ -351,12 +361,12 @@ public final class AuxEngine {
 	}
 
 	private void fireTagGained(KnownWindow window, Tag tag) {
-		TagEvent event = new TagEvent(this, window, tag);
+		TagEvent event = new TagEvent(this, window, tag, false);
 		tagListeners.fire(listener -> listener.tagGained(event));
 	}
 
-	private void fireTagLost(KnownWindow window, Tag tag) {
-		TagEvent event = new TagEvent(this, window, tag);
+	private void fireTagLost(KnownWindow window, Tag tag, boolean windowDestroyed) {
+		TagEvent event = new TagEvent(this, window, tag, windowDestroyed);
 		tagListeners.fire(listener -> listener.tagLost(event));
 	}
 
@@ -389,7 +399,7 @@ public final class AuxEngine {
 		Tag tag = grant.getTag();
 		tag.removeWindowNoGlobalNotify(grant);
 		if(lost)
-			fireTagLost(window, tag);
+			fireTagLost(window, tag, false);
 	}
 
 }

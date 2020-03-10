@@ -8,10 +8,13 @@ public final class TagEvent {
 
 	private final Tag tag;
 
-	TagEvent(AuxEngine engine, KnownWindow window, Tag tag) {
+	private final boolean windowDestroyed;
+
+	TagEvent(AuxEngine engine, KnownWindow window, Tag tag, boolean windowDestroyed) {
 		this.engine = engine;
 		this.window = window;
 		this.tag = tag;
+		this.windowDestroyed = windowDestroyed;
 	}
 
 	public AuxEngine getEngine() {
@@ -24,6 +27,10 @@ public final class TagEvent {
 
 	public Tag getTag() {
 		return tag;
+	}
+
+	public boolean isWindowDestroyed() {
+		return windowDestroyed;
 	}
 
 }

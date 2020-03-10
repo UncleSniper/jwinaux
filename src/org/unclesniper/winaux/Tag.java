@@ -4,12 +4,17 @@ import java.util.Set;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.concurrent.atomic.AtomicLong;
 
 public final class Tag {
+
+	private static final AtomicLong NEXT_ID = new AtomicLong();
 
 	private String name;
 
 	private final Map<KnownWindow, Set<TagGrant>> windows = new HashMap<KnownWindow, Set<TagGrant>>();
+
+	private final long id = Tag.NEXT_ID.getAndIncrement();
 
 	public Tag() {}
 
@@ -23,6 +28,10 @@ public final class Tag {
 
 	public void setName(String name) {
 		this.name = name;
+	}
+
+	public long getID() {
+		return id;
 	}
 
 	boolean addWindowNoGlobalNotify(TagGrant grant) {

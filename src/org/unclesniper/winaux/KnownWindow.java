@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import org.unclesniper.winwin.HWnd;
+import java.util.function.Consumer;
 
 public final class KnownWindow {
 
@@ -65,11 +66,14 @@ public final class KnownWindow {
 		return changed;
 	}
 
-	void removeAllTagsNoGlobalNotify() {
+	void removeAllTagsNoGlobalNotify(Consumer<Tag> sink) {
 		synchronized(tags) {
 			try {
-				for(Tag tag : tags.keySet())
+				for(Tag tag : tags.keySet()) {
 					tag.removeCompleteWindowNoGlobalNotify(this);
+					if(sink != null)
+						sink.accept(tag);
+				}
 			}
 			finally {
 				tags.clear();

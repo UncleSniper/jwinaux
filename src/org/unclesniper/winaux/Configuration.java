@@ -16,6 +16,8 @@ public class Configuration {
 
 	private final List<TagProvider> tagProviders = new LinkedList<TagProvider>();
 
+	private final List<TagListener> tagListeners = new LinkedList<TagListener>();
+
 	public Configuration() {}
 
 	public List<AuxHotkey> getHotkeys() {
@@ -69,6 +71,19 @@ public class Configuration {
 
 	public boolean removeTagProvider(TagProvider provider) {
 		return provider != null && tagProviders.remove(provider);
+	}
+
+	public List<TagListener> getTagListeners() {
+		return Collections.unmodifiableList(tagListeners);
+	}
+
+	public void addTagListener(TagListener listener) {
+		if(listener != null)
+			tagListeners.add(listener);
+	}
+
+	public boolean removeTagListener(TagListener listener) {
+		return listener != null && tagListeners.remove(listener);
 	}
 
 }

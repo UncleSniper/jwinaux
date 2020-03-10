@@ -1,6 +1,8 @@
 <?xml version="1.0"?>
 <project name="jwinaux" default="dist" basedir=".">
 
+	<property file="build.properties"/>
+
 	<property name="src" location="src"/>
 	<property name="bin" location="bin"/>
 	<property name="lib" location="lib"/>
@@ -13,6 +15,7 @@
 	<property name="api.doc.visibility" value="private"/>
 	<property name="javadoc.jre.package.list" location="jre6.packages"/>
 	<property name="javadoc.jre.url" value="http://docs.oracle.com/javase/6/docs/api/"/>
+	<property name="install.dir" location="install"/>
 
 	<path id="build.classpath">
 		<fileset dir="${lib}" includes="**/*.jar"/>
@@ -58,6 +61,15 @@
 		<delete dir="${bin}"/>
 		<delete dir="${dist}"/>
 		<delete dir="${doc}/api"/>
+	</target>
+
+	<target name="install" depends="dist" description="install JAR files">
+		<mkdir dir="${install.dir}"/>
+		<copy todir="${install.dir}" flatten="true">
+			<fileset dir="${dist}">
+				<filename name="**/*.jar"/>
+			</fileset>
+		</copy>
 	</target>
 
 </project>
