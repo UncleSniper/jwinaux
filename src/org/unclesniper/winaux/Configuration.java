@@ -18,6 +18,10 @@ public class Configuration {
 
 	private final List<TagListener> tagListeners = new LinkedList<TagListener>();
 
+	private final List<AuxExtension> extensions = new LinkedList<AuxExtension>();
+
+	private Tag exemptionTag;
+
 	public Configuration() {}
 
 	public List<AuxHotkey> getHotkeys() {
@@ -84,6 +88,27 @@ public class Configuration {
 
 	public boolean removeTagListener(TagListener listener) {
 		return listener != null && tagListeners.remove(listener);
+	}
+
+	public void addExtension(AuxExtension extension) {
+		if(extension != null)
+			extensions.add(extension);
+	}
+
+	public boolean removeExtension(AuxExtension extension) {
+		return extension != null && extensions.remove(extension);
+	}
+
+	public List<AuxExtension> getExtensions() {
+		return Collections.unmodifiableList(extensions);
+	}
+
+	public Tag getExemptionTag() {
+		return exemptionTag;
+	}
+
+	public void setExemptionTag(Tag exemptionTag) {
+		this.exemptionTag = exemptionTag;
 	}
 
 }

@@ -3,16 +3,19 @@ package org.unclesniper.winaux;
 import java.util.Map;
 import java.util.List;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.IdentityHashMap;
 import org.unclesniper.winwin.Msg;
 import org.unclesniper.winwin.HWnd;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import org.unclesniper.winwin.Hotkey;
 import org.unclesniper.winwin.WinAPI;
 import org.unclesniper.winwin.WinHook;
 import java.util.concurrent.BlockingQueue;
 import org.unclesniper.winwin.WinEventProc;
+import org.unclesniper.winaux.util.TypeMap;
 import org.unclesniper.winwin.HWinEventHook;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -142,12 +145,22 @@ public final class AuxEngine {
 
 	private final Listeners<TagListener> tagListeners = new Listeners<TagListener>();
 
+	private final TypeMap extensions = new TypeMap();
+
+	private final Map<WindowCreationHook, Long> windowCreationHooks
+			= new IdentityHashMap<WindowCreationHook, Long>();
+
+	private volatile Map<WindowCreationHook, Long> windowCreationHookCache;
+
+	private Tag exemptionTag;
+
+	private Worker workerThread;
+
 	public AuxEngine() {}
 
 	public boolean doYaThang(Configuration config, Runnable onError) {
 		synchronized(thangLock) {
 			boolean hooking = false;
-			Worker workerThread = null;
 			AuxWinEventProc winEventProc = new AuxWinEventProc();
 			try {
 				thangThreadId = WinAPI.getCurrentThreadId();
@@ -169,6 +182,11 @@ public final class AuxEngine {
 					addShellEventListener(listener);
 				for(TagListener listener : config.getTagListeners())
 					addTagListener(listener);
+				for(AuxExtension extension : config.getExtensions())
+					extension.registerExtension(this);
+				exemptionTag = config.getExemptionTag();
+				if(exemptionTag == null)
+					exemptionTag = new Tag("exempt");
 				for(AuxHotkey hk : config.getHotkeys()) {
 					if(hk.isLowLevel())
 						WinHook.registerLowLevelHotKey(null, hkid++, hk.getModifiers(), hk.getKey(),
@@ -214,8 +232,12 @@ public final class AuxEngine {
 						catch(InterruptedException ie) {}
 					}
 				}
+				workerThread = null;
 				taskQueue.clear();
 				shellEventListeners.clear();
+				tagListeners.clear();
+				extensions.clear();
+				exemptionTag = null;
 			}
 		}
 		return true;
@@ -260,7 +282,8 @@ public final class AuxEngine {
 			kw = new KnownWindow(hwnd);
 			knownWindows.put(hwnd, kw);
 		}
-		fireWindowCreate(kw);
+		if(consultWindowCreationHooks(kw))
+			fireWindowCreate(kw);
 		return kw;
 	}
 
@@ -400,6 +423,99 @@ public final class AuxEngine {
 		tag.removeWindowNoGlobalNotify(grant);
 		if(lost)
 			fireTagLost(window, tag, false);
+	}
+
+	public <T> T setExtension(Class<T> key, T value) {
+		synchronized(extensions) {
+			return extensions.put(key, value);
+		}
+	}
+
+	public <T> T removeExtension(Class<T> key) {
+		synchronized(extensions) {
+			return extensions.remove(key);
+		}
+	}
+
+	public <T> T getExtension(Class<T> key) {
+		synchronized(extensions) {
+			return extensions.get(key);
+		}
+	}
+
+	public <T> T getExtension(Class<T> key, Supplier<T> constructor) {
+		synchronized(extensions) {
+			T t = extensions.get(key);
+			if(t != null || constructor == null)
+				return t;
+			t = constructor.get();
+			extensions.put(key, t);
+			return t;
+		}
+	}
+
+	public Tag getExemptionTag() {
+		return exemptionTag;
+	}
+
+	public boolean isExempt(KnownWindow window) {
+		return window.hasTag(exemptionTag);
+	}
+
+	public boolean isWorkerThread() {
+		return workerThread != null && workerThread.getId() == Thread.currentThread().getId();
+	}
+
+	public void addWindowCreationHook(WindowCreationHook hook) {
+		if(hook == null)
+			return;
+		synchronized(windowCreationHooks) {
+			windowCreationHookCache = null;
+			Long oldCount = windowCreationHooks.get(hook);
+			long newCount = (oldCount == null ? 0l : oldCount.longValue()) + 1l;
+			windowCreationHooks.put(hook, newCount);
+		}
+	}
+
+	public boolean removeWindowCreationHook(WindowCreationHook hook) {
+		if(hook == null)
+			return false;
+		synchronized(windowCreationHooks) {
+			windowCreationHookCache = null;
+			Long oldCount = windowCreationHooks.get(hook);
+			if(oldCount == null)
+				return false;
+			long newCount = oldCount.longValue() - 1l;
+			if(newCount < 0l)
+				return false;
+			if(newCount == 0l)
+				windowCreationHooks.remove(hook);
+			else
+				windowCreationHooks.put(hook, newCount);
+		}
+		return true;
+	}
+
+	private boolean consultWindowCreationHooks(KnownWindow window) {
+		Map<WindowCreationHook, Long> c = windowCreationHookCache;
+		if(c == null) {
+			c = new IdentityHashMap<WindowCreationHook, Long>();
+			synchronized(windowCreationHooks) {
+				for(Map.Entry<WindowCreationHook, Long> entry : windowCreationHooks.entrySet())
+					c.put(entry.getKey(), entry.getValue());
+				windowCreationHookCache = c;
+			}
+		}
+		Iterator<WindowCreationHook> it = c.keySet().iterator();
+		while(it.hasNext()) {
+			WindowCreationHook hook = it.next();
+			int flags = hook.onWindowCreated(this, window);
+			if((flags & WindowCreationHook.FL_REMOVE) != 0)
+				it.remove();
+			if((flags & WindowCreationHook.FL_SWALLOW) != 0)
+				return false;
+		}
+		return true;
 	}
 
 }
