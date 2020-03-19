@@ -4,4 +4,6 @@ public interface AuxExtension {
 
 	void registerExtension(AuxEngine engine);
 
+	void unregisterExtension(AuxEngine engine);
+
 }

@@ -156,6 +156,8 @@ public final class AuxEngine {
 
 	private Worker workerThread;
 
+	private final Map<Tag, Void> knownTags = new IdentityHashMap<Tag, Void>();
+
 	public AuxEngine() {}
 
 	public boolean doYaThang(Configuration config, Runnable onError) {
@@ -166,9 +168,12 @@ public final class AuxEngine {
 				thangThreadId = WinAPI.getCurrentThreadId();
 				int hkid = 0;
 				Map<Class<?>, Map<TagProvider, Void>> listenerTypes = new HashMap<Class<?>, Map<TagProvider, Void>>();
-				for(TagProvider provider : config.getTagProviders()) {
-					Consumer<Class<?>> listenerTypeSink = AuxEngine.makeListenerTypeSink(listenerTypes, provider);
-					provider.getPredicate().collectListenerTypes(listenerTypeSink);
+				synchronized(knownTags) {
+					for(TagProvider provider : config.getTagProviders()) {
+						Consumer<Class<?>> listenerTypeSink = AuxEngine.makeListenerTypeSink(listenerTypes, provider);
+						provider.getPredicate().collectListenerTypes(listenerTypeSink);
+						knownTags.put(provider.getTag(), null);
+					}
 				}
 				Map<Class<?>, TagUpdater> tagUpdaters = config.getTagUpdaters();
 				for(Map.Entry<Class<?>, Map<TagProvider, Void>> entry : listenerTypes.entrySet()) {
@@ -187,6 +192,9 @@ public final class AuxEngine {
 				exemptionTag = config.getExemptionTag();
 				if(exemptionTag == null)
 					exemptionTag = new Tag("exempt");
+				synchronized(knownTags) {
+					knownTags.put(exemptionTag, null);
+				}
 				for(AuxHotkey hk : config.getHotkeys()) {
 					if(hk.isLowLevel())
 						WinHook.registerLowLevelHotKey(null, hkid++, hk.getModifiers(), hk.getKey(),
@@ -208,6 +216,8 @@ public final class AuxEngine {
 				taskQueue.add(() -> {});
 				weHookLo.unhookWinEvent();
 				weHookHi.unhookWinEvent();
+				for(AuxExtension extension : config.getExtensions())
+					extension.unregisterExtension(this);
 			}
 			catch(RuntimeException e) {
 				ExceptionWindow.showException(e, onError == null ? null : exwin -> onError.run());
@@ -516,6 +526,14 @@ public final class AuxEngine {
 				return false;
 		}
 		return true;
+	}
+
+	public List<Tag> getKnownTags() {
+		List<Tag> tags = new LinkedList<Tag>();
+		synchronized(knownTags) {
+			tags.addAll(knownTags.keySet());
+		}
+		return tags;
 	}
 
 }

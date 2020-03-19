@@ -5,20 +5,32 @@ import java.io.IOException;
 import java.net.URLClassLoader;
 import org.unclesniper.ogdl.Injection;
 import org.unclesniper.ogdl.ClassRegistry;
+import org.unclesniper.ogdl.FileURLResolver;
 import org.unclesniper.winaux.boot.BootConfig;
+import org.unclesniper.ogdl.DirectiveTokenSink;
 import org.unclesniper.ogdl.ObjectGraphDescriptor;
 import org.unclesniper.ogdl.ObjectDescriptionException;
 
 public class GoBabyGo {
 
-	private static ClassLoader getBootClassLoader(File bootfile) throws IOException, ObjectDescriptionException{
+	private static ObjectGraphDescriptor readOGDL(File file, File confdir, ClassLoader bootcl)
+			throws IOException, ObjectDescriptionException {
+		ClassRegistry creg = new ClassRegistry();
+		Injection inj = new Injection(creg);
+		inj.setConstructionClassLoader(bootcl);
+		inj.registerBuiltinStringClassMappers();
+		DirectiveTokenSink.Wrapper wrapper = new DirectiveTokenSink.Wrapper();
+		wrapper.setIncludeURLResolver("conf", new FileURLResolver(confdir));
+		inj.addTokenSinkWrapper(wrapper);
+		return inj.readDescription(file);
+	}
+
+	private static ClassLoader getBootClassLoader(File bootfile, File confdir)
+			throws IOException, ObjectDescriptionException {
 		ClassLoader parent = GoBabyGo.class.getClassLoader();
 		if(!bootfile.isFile())
 			return parent;
-		ClassRegistry creg = new ClassRegistry();
-		Injection inj = new Injection(creg);
-		inj.registerBuiltinStringClassMappers();
-		ObjectGraphDescriptor odesc = inj.readDescription(bootfile);
+		ObjectGraphDescriptor odesc = GoBabyGo.readOGDL(bootfile, confdir, null);
 		Object confroot = odesc.getRootObject();
 		if(!(confroot instanceof BootConfig))
 			throw new IllegalArgumentException("Bootstrap wiring file must yield a " + BootConfig.class.getName()
@@ -32,20 +44,16 @@ public class GoBabyGo {
 		File confdir = new File(home, ".winaux");
 		ClassLoader bootcl;
 		try {
-			bootcl = GoBabyGo.getBootClassLoader(new File(confdir, "boot.ogdl"));
+			bootcl = GoBabyGo.getBootClassLoader(new File(confdir, "boot.ogdl"), confdir);
 		}
 		catch(IOException | ObjectDescriptionException | RuntimeException e) {
 			ExceptionWindow.showException(e, win -> System.exit(1));
 			return;
 		}
 		File wirefile = new File(confdir, "wire.ogdl");
-		ClassRegistry creg = new ClassRegistry();
-		Injection inj = new Injection(creg);
-		inj.setConstructionClassLoader(bootcl);
-		inj.registerBuiltinStringClassMappers();
 		Configuration conf;
 		try {
-			ObjectGraphDescriptor odesc = inj.readDescription(wirefile);
+			ObjectGraphDescriptor odesc = GoBabyGo.readOGDL(wirefile, confdir, bootcl);
 			Object confroot = odesc.getRootObject();
 			if(!(confroot instanceof Configuration))
 				throw new IllegalArgumentException("Wiring file must yield a " + Configuration.class.getName()

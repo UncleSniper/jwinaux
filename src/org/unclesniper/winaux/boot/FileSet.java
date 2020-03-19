@@ -17,7 +17,7 @@ public interface FileSet {
 		Set<File> set = new HashSet<File>();
 		List<File> list = new LinkedList<File>();
 		files.collectFiles(file -> {
-			if(file != null && !set.add(file))
+			if(file != null && set.add(file))
 				list.add(file);
 		});
 		return list;

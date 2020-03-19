@@ -17,7 +17,7 @@ public interface URLSet {
 		Set<URL> set = new HashSet<URL>();
 		List<URL> list = new LinkedList<URL>();
 		urls.collectURLs(url -> {
-			if(url != null && !set.add(url))
+			if(url != null && set.add(url))
 				list.add(url);
 		});
 		return list;
