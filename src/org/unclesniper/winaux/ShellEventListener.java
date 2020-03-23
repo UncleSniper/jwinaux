@@ -32,4 +32,6 @@ public interface ShellEventListener {
 
 	void windowMoveSizeStart(ShellEvent event);
 
+	void windowShowHideMessage(ShowHideShellEvent event);
+
 }

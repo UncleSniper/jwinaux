@@ -17,6 +17,8 @@ import java.util.concurrent.BlockingQueue;
 import org.unclesniper.winwin.WinEventProc;
 import org.unclesniper.winaux.util.TypeMap;
 import org.unclesniper.winwin.HWinEventHook;
+import org.unclesniper.winwin.CallWndRetProc;
+import org.unclesniper.winwin.WindowsException;
 import java.util.concurrent.LinkedBlockingQueue;
 
 public final class AuxEngine {
@@ -93,6 +95,16 @@ public final class AuxEngine {
 		@Override
 		public void windowMoveSizeStart(HWnd hwnd) {
 			slate(() -> fireWindowMoveSizeStart(internWindow(hwnd)));
+		}
+
+	}
+
+	private final class AuxCallWndRetProc implements CallWndRetProc {
+
+		@Override
+		public void wmShowWindow(HWnd hwnd, boolean shown, ShowWindow reason) {
+			if(reason == ShowWindow.BY_SHOWWINDOW)
+				slate(() -> fireWindowShowHideMessage(internWindow(hwnd), shown));
 		}
 
 	}
@@ -207,7 +219,8 @@ public final class AuxEngine {
 						HWinEventHook.EVENT_SYSTEM_DESKTOPSWITCH, HWinEventHook.WINEVENT_SKIPOWNPROCESS, winEventProc);
 				HWinEventHook weHookHi = HWinEventHook.setWinEventHook(HWinEventHook.EVENT_OBJECT_CREATE,
 						HWinEventHook.EVENT_OBJECT_UNCLOAKED, HWinEventHook.WINEVENT_SKIPOWNPROCESS, winEventProc);
-				WinHook.startHooks(WinHook.WH_KEYBOARD_LL);
+				WinHook.setCallWndRetProc(new AuxCallWndRetProc());
+				WinHook.startHooks(WinHook.WH_KEYBOARD_LL | WinHook.WH_CALLWNDPROCRET);
 				hooking = true;
 				slate(this::internInitialWindows);
 				workerThread = new Worker();
@@ -242,12 +255,16 @@ public final class AuxEngine {
 						catch(InterruptedException ie) {}
 					}
 				}
+				WinHook.setCallWndRetProc(null);
 				workerThread = null;
 				taskQueue.clear();
 				shellEventListeners.clear();
 				tagListeners.clear();
 				extensions.clear();
 				exemptionTag = null;
+				knownTags.clear();
+				windowCreationHooks.clear();
+				windowCreationHookCache = null;
 			}
 		}
 		return true;
@@ -289,7 +306,12 @@ public final class AuxEngine {
 			kw = knownWindows.get(hwnd);
 			if(kw != null)
 				return kw;
-			kw = new KnownWindow(hwnd);
+			Boolean wantsShow = null;
+			try {
+				wantsShow = hwnd.isWindowVisible();
+			}
+			catch(WindowsException we) {}
+			kw = new KnownWindow(hwnd, wantsShow);
 			knownWindows.put(hwnd, kw);
 		}
 		if(consultWindowCreationHooks(kw))
@@ -379,6 +401,12 @@ public final class AuxEngine {
 	private void fireWindowMoveSizeStart(KnownWindow win) {
 		ShellEvent event = new ShellEvent(this, win);
 		shellEventListeners.fire(listener -> listener.windowMoveSizeStart(event));
+	}
+
+	private void fireWindowShowHideMessage(KnownWindow win, boolean shown) {
+		boolean expected = win.adviseWindowShowHideMessage(shown);
+		ShowHideShellEvent event = new ShowHideShellEvent(this, win, shown, expected);
+		shellEventListeners.fire(listener -> listener.windowShowHideMessage(event));
 	}
 
 	public void postQuitMessage() {

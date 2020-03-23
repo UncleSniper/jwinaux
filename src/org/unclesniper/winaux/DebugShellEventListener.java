@@ -77,6 +77,11 @@ public class DebugShellEventListener implements ShellEventListener {
 		DebugShellEventListener.doEvent("windowMoveSizeStart", event, false);
 	}
 
+	@Override
+	public void windowShowHideMessage(ShowHideShellEvent event) {
+		DebugShellEventListener.doEvent("windowShowHideMessage(shown = " + event.isShown() + ')', event, false);
+	}
+
 	private static void doEvent(String what, ShellEvent event, boolean windowDestroyed) {
 		KnownWindow window = event.getWindow();
 		DebugShellEventListener.doEvent(what, window == null ? null : window.getHWnd(), windowDestroyed);

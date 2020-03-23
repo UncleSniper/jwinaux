@@ -87,4 +87,13 @@ public final class Tag {
 		}
 	}
 
+	public String getNameOrID() {
+		return name == null ? "#" + id : name;
+	}
+
+	public String getNameAndID() {
+		String ids = "(" + id + ')';
+		return name == null ? ids : name + ' ' + ids;
+	}
+
 }

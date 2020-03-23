@@ -1,6 +1,6 @@
 package org.unclesniper.winaux;
 
-public final class ShellEvent {
+public class ShellEvent {
 
 	private final AuxEngine engine;
 

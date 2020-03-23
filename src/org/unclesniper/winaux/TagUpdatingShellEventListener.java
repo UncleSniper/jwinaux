@@ -74,4 +74,9 @@ public class TagUpdatingShellEventListener extends AbstractTagUpdatingListener i
 	@Override
 	public void windowMoveSizeStart(ShellEvent event) {}
 
+	@Override
+	public void windowShowHideMessage(ShowHideShellEvent event) {
+		updateTagGrants(event);
+	}
+
 }
